@@ -124,14 +124,31 @@ python knowledge_qdrant.py --filter   # лише правила про комп�
   — нічого понад поріг (fail-closed): агент не вигадуватиме правило
 ```
 
-**Docker не потрібен** — Qdrant піднімається всередині процесу. Справжній
-сервер, якщо треба показати дашборд:
+**Docker не потрібен, і жодного ключа теж** — Qdrant піднімається всередині
+процесу. Це режим за замовчуванням, саме він і потрібен для заняття.
+
+Якщо хочете справжній сервер із дашбордом — є ще два режими:
 
 ```bash
+# 1. свій Qdrant у docker — БЕЗ ключа (образ за замовчуванням його не вимагає)
 docker run -p 6333:6333 qdrant/qdrant
 QDRANT_URL=http://localhost:6333 python knowledge_qdrant.py
-# http://localhost:6333/dashboard
+# дашборд: http://localhost:6333/dashboard
+
+# 2. сервер, який ЗАХИЩЕНИЙ ключем (або хмара Qdrant Cloud)
+QDRANT_URL=http://localhost:6333 QDRANT_API_KEY=<ваш-ключ> python knowledge_qdrant.py
 ```
+
+> **Якщо бачите `401 Unauthorized: Must provide an API key`** — ваш сервер
+> піднято зі змінною `QDRANT__SERVICE__API_KEY`, тобто вимагає ключ.
+> Подивитись його для локального контейнера:
+>
+> ```bash
+> docker inspect <імʼя-контейнера> --format '{{range .Config.Env}}{{println .}}{{end}}' | grep API_KEY
+> ```
+>
+> Для Qdrant Cloud ключ береться в консолі кластера. У вбудованому режимі
+> (без `QDRANT_URL`) ключі не потрібні взагалі.
 
 Порівняно зі списком у пам'яті додається: індекс переживає рестарт,
 payload з метаданими поруч із вектором, фільтри та ANN-пошук замість

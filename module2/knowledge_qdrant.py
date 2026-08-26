@@ -4,9 +4,10 @@
 Інтерфейс не змінився: retrieve() / as_context(). Агент про заміну сховища
 не дізнається — саме в цьому й пуант шару знань.
 
-Два режими, обирається сам:
-  QDRANT_URL заданий  → справжній сервер (docker run -p 6333:6333 qdrant/qdrant)
-  не заданий          → вбудований режим ":memory:" — нуль інфраструктури
+Три режими, обирається сам — ЖОДЕН не потрібен для заняття, крім першого:
+  нічого не задано    → вбудований ":memory:" — нуль інфраструктури, БЕЗ ключів
+  QDRANT_URL          → свій сервер (docker run -p 6333:6333 qdrant/qdrant)
+  QDRANT_URL + QDRANT_API_KEY → Qdrant Cloud (ключ з консолі кластера)
 
 Що зʼявляється порівняно з in-memory списком (knowledge_vec.py):
   · окреме сховище: індекс переживає перезапуск процесу (на сервері)
@@ -62,11 +63,19 @@ def _topic(keys: str) -> str:
 
 
 def client() -> QdrantClient:
-    """Сервер, якщо заданий QDRANT_URL; інакше вбудований режим."""
+    """Сервер, якщо заданий QDRANT_URL; інакше вбудований режим.
+
+    QDRANT_API_KEY потрібен ЛИШЕ для Qdrant Cloud. Локальний docker-сервер
+    і вбудований режим працюють без жодних ключів.
+    """
     global _client
     if _client is None:
         url = os.getenv("QDRANT_URL")
-        _client = QdrantClient(url=url) if url else QdrantClient(":memory:")
+        if url:
+            api_key = os.getenv("QDRANT_API_KEY") or None
+            _client = QdrantClient(url=url, api_key=api_key)
+        else:
+            _client = QdrantClient(":memory:")
         _ensure_collection(_client)
     return _client
 
@@ -114,7 +123,7 @@ def as_context(query: str, k: int = 3) -> str:
 
 
 if __name__ == "__main__":
-    mode = os.getenv("QDRANT_URL") or ":memory: (вбудований, без Docker)"
+    mode = os.getenv("QDRANT_URL") or ":memory: (вбудований, без Docker і без ключів)"
     print(f"Сховище: {mode}\nКолекція: {COLLECTION}, правил у KB: {len(KB)}\n")
 
     if "--filter" in sys.argv:
