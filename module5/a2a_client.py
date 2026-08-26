@@ -12,6 +12,10 @@
 
     python a2a_server.py     # у першому терміналі
     python a2a_client.py     # у другому
+
+Якщо термінал лише один — клієнт підніме сервер сам:
+
+    python a2a_client.py --with-server
 """
 
 import asyncio
@@ -90,10 +94,28 @@ def text_of(event) -> str:
     return " ".join(chunks).strip()
 
 
+async def fetch_card(http: "httpx.AsyncClient") -> dict:
+    """Прочитати візитівку — і зрозуміло пояснити, якщо сервера немає."""
+    try:
+        return (await http.get(f"{BASE}/.well-known/agent-card.json")).json()
+    except httpx.ConnectError:
+        raise SystemExit(
+            f"TrackBot не відповідає на {BASE}.\n"
+            f"A2A — це два процеси: клієнт нічого не вміє сам, він лише\n"
+            f"делегує задачі чужому агенту. Тому спершу підніміть сервер:\n"
+            f"\n"
+            f"    python a2a_server.py        # в іншому терміналі\n"
+            f"\n"
+            f"Або, якщо термінал лише один:\n"
+            f"\n"
+            f"    python a2a_client.py --with-server\n"
+        )
+
+
 async def main() -> None:
     async with httpx.AsyncClient(timeout=30) as http:
         # 1. Читаємо візитівку — до цього моменту ми про агента нічого не знали
-        card = (await http.get(f"{BASE}/.well-known/agent-card.json")).json()
+        card = await fetch_card(http)
         print(f"Знайшов агента: {card['name']} — {card['description'][:60]}…")
         print("вміє:")
         for s in card.get("skills", []):
@@ -114,5 +136,36 @@ async def main() -> None:
     print("чи є в нього LLM усередині. Ми надіслали задачу — отримали результат.")
 
 
+def serve_in_background():
+    """Підняти сервер підпроцесом — для тих, у кого один термінал.
+
+    Навчально чесніше запускати його окремо: видно, що це два незалежні
+    процеси. Але коли треба просто побачити результат — так швидше.
+    """
+    import subprocess
+    import time
+
+    here = pathlib.Path(__file__).resolve().parent
+    proc = subprocess.Popen([sys.executable, str(here / "a2a_server.py")],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+    for _ in range(40):                       # чекаємо, поки почне слухати
+        time.sleep(0.25)
+        try:
+            httpx.get(f"{BASE}/.well-known/agent-card.json", timeout=1)
+            print(f"[сам підняв сервер, pid {proc.pid}]\n")
+            return proc
+        except httpx.HTTPError:
+            continue
+    proc.terminate()
+    raise SystemExit("Сервер не піднявся за 10 секунд. Запустіть його окремо "
+                     "й подивіться, що він пише: python a2a_server.py")
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    server = serve_in_background() if "--with-server" in sys.argv else None
+    try:
+        asyncio.run(main())
+    finally:
+        if server:
+            server.terminate()
+            print("\n[сервер зупинено]")
