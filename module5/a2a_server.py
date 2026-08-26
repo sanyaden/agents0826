@@ -23,6 +23,20 @@ import pathlib
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
+
+def _require_a2a_1x() -> None:
+    """Стара гілка 0.x не має ні цих типів, ні DefaultRequestHandlerV2."""
+    from importlib.metadata import version
+    v = version("a2a-sdk")
+    if int(v.split(".")[0]) < 1:
+        raise SystemExit(
+            f"У вас a2a-sdk {v} — стара гілка 0.x, цей приклад на ній не працює.\n"
+            f"  pip install -U 'a2a-sdk>=1.1'\n"
+            f"Якщо оновлення не допомогло — ви, найпевніше, запустили не той\n"
+            f"Python. Перевірте: which python  (має бути шлях у .venv)."
+        )
+
+
 try:
     import uvicorn
     from fastapi import FastAPI
@@ -37,7 +51,9 @@ try:
                            AgentSkill, Message, Part, Role)
     from a2a.utils import TransportProtocol
 except ImportError as e:
-    raise SystemExit(f"Бракує пакета ({e.name}):  pip install a2a-sdk uvicorn fastapi")
+    raise SystemExit(f"Бракує пакета ({e.name}):  pip install 'a2a-sdk>=1.1' uvicorn fastapi")
+
+_require_a2a_1x()
 
 from domain import backend
 

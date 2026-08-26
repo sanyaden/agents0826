@@ -99,6 +99,11 @@ curl -s localhost:8931/.well-known/agent-card.json | jq
 - `Address already in use` — порт 8931 зайнятий: змініть його в обох
   файлах (`PUBLIC_URL`/`uvicorn.run` у сервері, `BASE` у клієнті).
 - `Бракує пакета (a2a)` — `pip install "a2a-sdk>=1.1"`.
+- `У вас a2a-sdk 0.x` — у системі лишилася стара гілка. Оновіть
+  (`pip install -U "a2a-sdk>=1.1"`), а якщо не допомогло — перевірте
+  `which python`: найчастіше це запуск системним Python замість `.venv`.
+  Симптом без цієї перевірки був невиразний:
+  `AttributeError: 'ClientFactory' object has no attribute 'create_from_url'`.
 - Код A2A із туторіалів 2025 року (`from a2a.server import A2AServer`) з
   версією 1.x **не працює**: у 1.0 змінилися і типи, і назви методів
   JSON-RPC. Орієнтуйтесь на ці два файли, а не на статті.
