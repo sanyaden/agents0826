@@ -13,9 +13,15 @@
     claude mcp add courier -- python courier_server.py
 """
 
-from mcp.server.fastmcp import FastMCP
+# На слайді написано FastMCP — так це називалось у SDK 1.x. У 2.0 клас
+# перейменували на MCPServer, API лишився той самий. Два рядки нижче
+# роблять файл робочим на обох версіях.
+try:
+    from mcp.server import MCPServer as _Server          # SDK >= 2.0
+except ImportError:
+    from mcp.server.fastmcp import FastMCP as _Server    # SDK 1.x
 
-mcp = FastMCP("courier")
+mcp = _Server("courier")
 
 
 @mcp.tool()
