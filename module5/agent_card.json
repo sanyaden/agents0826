@@ -1,27 +1,49 @@
 {
   "name": "TrackBot",
-  "description": "Агент поштового оператора: статуси відправлень, повернення вартості доставки, претензії. Українською.",
-  "url": "http://localhost:8080/a2a",
+  "description": "Агент поштового оператора: статуси відправлень і повернення вартості доставки. Українською.",
+  "supportedInterfaces": [
+    {
+      "url": "http://localhost:8931/a2a",
+      "protocolBinding": "JSONRPC"
+    }
+  ],
   "version": "1.0.0",
-  "protocolVersion": "0.3.0",
   "capabilities": {
-    "streaming": true,
-    "pushNotifications": false
+    "streaming": false
   },
-  "defaultInputModes": ["text/plain"],
-  "defaultOutputModes": ["text/plain"],
+  "defaultInputModes": [
+    "text/plain"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
   "skills": [
     {
       "id": "track-status",
       "name": "Статус відправлення",
-      "description": "Поточний статус і останнє сканування за трек-номером.",
-      "examples": ["Де зараз посилка EE123456789UA?"]
+      "description": "Поточний статус за трек-номером.",
+      "tags": [
+        "post",
+        "tracking"
+      ],
+      "examples": [
+        "Де зараз посилка EE123456789UA?"
+      ]
     },
     {
       "id": "refund",
       "name": "Повернення вартості доставки",
-      "description": "Перевірка права на повернення за правилом 4.2 і оформлення претензії.",
-      "examples": ["Посилка не прийшла два тижні, поверніть гроші за доставку."]
+      "description": "Право на повернення за правилом 4.2.",
+      "tags": [
+        "post",
+        "refund"
+      ],
+      "examples": [
+        "Посилка не прийшла два тижні, поверніть гроші."
+      ]
     }
-  ]
+  ],
+  "preferredTransport": "JSONRPC",
+  "protocolVersion": "0.3",
+  "url": "http://localhost:8931/a2a"
 }
