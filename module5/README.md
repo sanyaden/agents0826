@@ -12,6 +12,8 @@
 - `tracking_mcp.py` — справжній MCP-сервер поверх того самого
   `domain/backend.py` (SDK 1.x = FastMCP, 2.0 = MCPServer — підтримуються
   обидва). Ключ Anthropic не потрібен: сервер — це лише бекенд.
+- `courier_server.py` — той самий сервер, що на слайді 14: пʼятнадцять
+  рядків, дві функції-заглушки. Скелет для воркшопу — підставте свій API.
 - `test_mcp_client.py` — перевірка сервера stdio-клієнтом без Inspector.
 - `a2a_server.py` + `a2a_client.py` — робочий A2A: той самий TrackBot, але
   тепер його викликає не людина, а **інший агент**. Вертикаль MCP (агент ↔
@@ -25,11 +27,16 @@
 
 ```bash
 python run.py 5
+python courier_server.py                                 # мінімум зі слайда 14
 python tracking_mcp.py                                   # сервер (stdio)
 python test_mcp_client.py                                # клієнт до нього
 npx @modelcontextprotocol/inspector python tracking_mcp.py
 python poison_demo.py
 ```
+
+`courier_server.py` і `tracking_mcp.py` обидва чекають клієнта на stdio —
+запущені без нього вони просто мовчать. Це не зависання: підключіть до
+них `test_mcp_client.py`, Inspector або Claude Code.
 
 Кульмінація заняття — той самий сервер у Claude Code:
 
