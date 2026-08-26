@@ -42,7 +42,40 @@ python run_create_agent.py          # create_agent + middleware
 - Deprecated-мінне поле LangChain: AgentExecutor / LLMChain /
   ConversationBufferMemory ще живі у старих туторіалах — не вчіть мертві API.
 
-## Практика заняття: один агент — два стеки
+## Як запустити (з нуля, 5 хвилин)
+
+```bash
+git clone https://github.com/sanyaden/agents0826.git
+cd agents0826/module3
+
+python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -r requirements.txt        # усі чотири стеки одразу, ~3 хв
+cp .env.example .env                   # і впишіть свій ANTHROPIC_API_KEY
+```
+
+**Ключ потрібен рівно один — `ANTHROPIC_API_KEY`.** Він живить усі чотири
+стеки: LangGraph і `create_agent` через `langchain-anthropic`, Claude Agent
+SDK напряму, Google ADK — через LiteLLM (тому другий ключ, гугловий, не
+потрібен). `.env` читає `config.py` на старті, окремо експортувати змінні
+не треба.
+
+Перевірити, що все стало на місце:
+
+```bash
+python -c "import langchain, langgraph, claude_agent_sdk, google.adk; print('ok')"
+```
+
+| Файл | Що потрібно понад базу |
+|---|---|
+| `run.py 3`, `run_langgraph.py` | нічого, лише ключ |
+| `run_create_agent.py` | `langchain-anthropic` (є в requirements) |
+| `run_agent_sdk.py` | `claude-agent-sdk` — Node.js НЕ потрібен, CLI усередині пакета |
+| `run_adk.py` | `google-adk[extensions]` — тягне `litellm`, найдовше ставиться |
+
+Якщо не хочете важких стеків — приберіть два останні рядки з
+`requirements.txt`: перші три команди практики працюватимуть.
+
+## Практика заняття: один агент — чотири стеки
 
 ```bash
 python run.py 3                  # руками: стани + чекпоінт (50 рядків)
@@ -50,8 +83,11 @@ python run_langgraph.py          # стек A: стани як вузли гра
 python run_langgraph.py --pause  # пауза після DECIDE + resume (HITL)
 python run_create_agent.py       # стек B: create_agent + middleware
 python run_agent_sdk.py          # стек C: Claude Agent SDK — три сцени зі слайдів
-python run_adk.py                # стек D: Google ADK 2.0 (потрібен google-adk[extensions])
+python run_adk.py                # стек D: Google ADK 2.0 — callback + sub_agents
 ```
+
+Перевірено з чистого venv 26.08: усі шість команд працюють після одного
+`pip install -r requirements.txt`.
 
 Порівнюйте чесно: рядки коду · що видно в стектрейсі · що робити при
 падінні посеред діалогу · вартість.

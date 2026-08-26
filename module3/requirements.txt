@@ -4,8 +4,13 @@ python-dotenv>=1.0.0
 sentence-transformers>=3.0
 qdrant-client>=1.12        # векторна БД: вбудований :memory: або сервер
 
-# фреймворки:
+# ── стек A і B: LangGraph + create_agent (обовʼязкові для практики) ──
 langchain>=1.3
+langchain-anthropic>=0.3   # ChatAnthropic для run_create_agent.py
 langgraph>=1.2
-claude-agent-sdk>=0.2       # третій стек: python run_agent_sdk.py
-# google-adk[extensions]>=2.0    # четвертий стек: python run_adk.py
+
+# ── стек C: Claude Agent SDK ──
+claude-agent-sdk>=0.2      # python run_agent_sdk.py
+
+# ── стек D: Google ADK 2.0 (важкий: тягне litellm) ──
+google-adk[extensions]>=2.0   # python run_adk.py
