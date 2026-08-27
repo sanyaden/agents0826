@@ -1,11 +1,15 @@
 """
-МОДУЛЬ 6 — Безпека і спостережуваність
+МОДУЛЬ 6 — Безпека агентів і Guardrails
 
-Додаємо два незалежні механізми:
-  1) трейсинг — кожен крок агента фіксується зі структурою й таймінгом;
-  2) guardrail — відповідь перевіряється ПЕРЕД показом користувачу.
+Чотири шари навколо того самого агента:
+  1) вхідний фільтр (filters.scan_input) — регекси до моделі, 0 токенів;
+  2) PreToolUse-хуки (hooks.py) — детерміновані правила перед dispatch;
+  3) CAPABILITIES-allowlist — у проєкті з М1, тут лише нагадуємо;
+  4) вихідний фільтр (filters.scan_output) + guardrail на дешевій моделі —
+     відповідь перевіряється ПЕРЕД показом користувачу.
 
-Ключова думка: без цього ви не знаєте, ЧОМУ агент відповів саме так.
+Плюс трейсинг кожного кроку — без нього ви не знаєте, ЧОМУ агент
+відповів саме так. Це тизер модуля 7.
 """
 
 if __name__ == "__main__":            # прямий запуск: корінь модуля у sys.path
@@ -18,10 +22,11 @@ from core import escalation
 from domain.backend import tools_for
 from domain.knowledge import as_context
 from config import BASE_PROMPT
+import filters
 
-TITLE = "Спостережуваність і безпека"
-ADDS  = "трейсинг кроків + перевірка відповіді перед показом"
-FILES = ["modules/m06_security.py"]
+TITLE = "Безпека агентів і Guardrails"
+ADDS  = "вхідний/вихідний фільтри + хуки + guardrail перед показом"
+FILES = ["modules/m06_security.py", "filters.py", "hooks.py", "attacks.py"]
 
 GUARDRAIL = (
     "Ти — перевірка безпеки відповіді служби підтримки. Оціни текст і поверни JSON: "
@@ -52,7 +57,14 @@ class Tracer:
         }
 
 
-def run(query: str) -> dict:
+def run(query: str, input_filter: bool = True) -> dict:
+    # Шар 1: вхідний фільтр. Регекси, нуль токенів — очевидне ріжемо
+    # на порозі, не витрачаючи ані виклику моделі.
+    gate = filters.scan_input(query) if input_filter else {"verdict": "off"}
+    if gate["verdict"] == "block":
+        return {"answer": filters.REFUSAL, "outcome": "input_blocked",
+                "input_filter": gate, "trace": [], "escalated": False}
+
     tracer = Tracer()
 
     result = run_agent(
@@ -61,8 +73,15 @@ def run(query: str) -> dict:
         query=query,
         on_step=tracer,
     )
-
+    result["input_filter"] = gate
     result["tracing"] = tracer.summary()
+
+    # Шар 4а: детермінований вихідний фільтр — чужі URL і номери карток
+    # не покажемо, хоч би як вони потрапили у відповідь.
+    result["answer"], out_flags = filters.scan_output(result["answer"])
+    result["output_filter"] = out_flags
+
+    # Шар 4б: guardrail на дешевій моделі — те, що регексом не зловиш.
     result["guardrail"] = ask_json(
         GUARDRAIL,
         result["answer"],
