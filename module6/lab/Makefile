@@ -22,4 +22,8 @@ test:              ## крок 5: регресія в CI
 
 clean:
 	rm -f egress.log
-.PHONY: setup attack matrix nemo test clean
+
+reset:              ## якщо setup падає на «invalid wheel» — почати з нуля
+	rm -rf .venv .cache
+	@echo 'Оточення і кеш прибрано. Далі: make setup'
+.PHONY: setup attack matrix nemo test clean reset
