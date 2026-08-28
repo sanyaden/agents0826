@@ -1,2 +1,4 @@
-anthropic>=0.40.0
+# 1.x прибрав temperature з messages.create(). Код працює на обох
+# мажорах, але тестуємо на 0.x — саме його ставить ця вимога:
+anthropic>=0.40,<1
 python-dotenv>=1.0.0

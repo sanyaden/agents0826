@@ -3,7 +3,7 @@ export LLM_MODE ?= fake
 PY := .venv/bin/python
 
 setup:
-	uv venv --python 3.12 .venv
+	uv venv --python 3.12 --prompt lab .venv
 	VIRTUAL_ENV=.venv uv pip install guardrails-ai nemoguardrails pytest \
 		guardrails-ai-regex-match guardrails-ai-valid-length guardrails-ai-secrets-present
 	printf 'enable_metrics=false\nuse_remote_inferencing=false\n' > .guardrailsrc

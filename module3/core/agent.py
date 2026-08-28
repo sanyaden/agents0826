@@ -6,12 +6,19 @@
   api_error · tool_error · turns_exhausted · no_tool_used
 """
 
+import inspect
 import json
 import time
 from anthropic import Anthropic, APIError, APIStatusError
 from config import API_KEY, MODEL, MODEL_FAST, MAX_TOKENS, MAX_TURNS
 
 client = Anthropic(api_key=API_KEY)
+
+# У anthropic 1.x параметр temperature прибрали з messages.create(): нові
+# моделі ним не керуються. Щоб той самий код працював і на 0.x, і на 1.x,
+# зʼясовуємо це один раз і мовчки прибираємо аргумент там, де його не беруть.
+_ACCEPTS_TEMPERATURE = "temperature" in inspect.signature(
+    client.messages.create).parameters
 
 # накопичувач вартості прогону
 USAGE = {"calls": 0, "in": 0, "out": 0, "by_model": {}}
@@ -33,6 +40,8 @@ def reset_usage():
 
 def _call(**kwargs):
     """Виклик API з ретраями на перевантаження і rate limit."""
+    if not _ACCEPTS_TEMPERATURE:
+        kwargs.pop("temperature", None)
     for attempt in range(3):
         try:
             resp = client.messages.create(**kwargs)
