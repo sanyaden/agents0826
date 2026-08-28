@@ -115,7 +115,7 @@ REGISTRY = {
     "close_case": close_case,
 }
 
-# Класифікація інструментів для політики контейнменту (крок 4).
+# Класифікація інструментів для політики обмеження можливостей (крок 4).
 CAPABILITY = {
     "kb_search": "untrusted_read",
     "get_case": "untrusted_read",
