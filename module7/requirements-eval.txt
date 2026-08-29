@@ -4,3 +4,6 @@ ragas @ git+https://github.com/sanyaden/ragas.git@fix/optional-vertexai-imports-
 datasets>=2.19
 langchain-anthropic>=1.5
 langchain-huggingface>=1.2
+
+# опційно, для pytest --deepeval-gate (потребує свого ключа судді):
+deepeval>=4.0

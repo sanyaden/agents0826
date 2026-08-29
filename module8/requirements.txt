@@ -1,6 +1,6 @@
-# 1.x прибрав temperature з messages.create(). Код працює на обох
-# мажорах, але тестуємо на 0.x — саме його ставить ця вимога:
-anthropic>=0.40,<1
+# 1.x прибрав temperature з messages.create() — код працює на обох
+# мажорах (core/agent.py прибирає аргумент, якщо його не беруть):
+anthropic>=0.40,<2
 python-dotenv>=1.0.0
 
 sentence-transformers>=3.0
@@ -25,3 +25,14 @@ a2a-sdk>=1.1
 uvicorn>=0.30
 fastapi>=0.115
 httpx>=0.27
+
+# М7 — спостережуваність за домовленостями OTel GenAI (otel_tracing.py).
+# Одна інструментація, різні бекенди: консоль, Phoenix, будь-що з OTLP.
+opentelemetry-sdk>=1.40
+opentelemetry-exporter-otlp-proto-http>=1.40
+
+# локальний UI для трейсів; тягне anthropic 1.x — тому пін нижче до <2
+arize-phoenix>=20.0
+
+# евали як юніт-тести (test_eval_gate.py)
+pytest>=8.0
