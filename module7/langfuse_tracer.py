@@ -17,9 +17,13 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 from modules import m06_security as m06
 
+# SDK 3.x/4.x: Langfuse().trace() більше немає, замість нього get_client()
+# і start_observation(). Це, до речі, і є ціна вендорського SDK: коли
+# постачальник міняє мажорну версію, ваш код інструментації переписується.
+# Поруч у otel_tracing.py той самий агент пережив ці зміни без єдиної правки.
 try:
-    from langfuse import Langfuse
-    _langfuse = Langfuse() if os.getenv("LANGFUSE_PUBLIC_KEY") else None
+    from langfuse import get_client
+    _langfuse = get_client() if os.getenv("LANGFUSE_PUBLIC_KEY") else None
 except ImportError:
     _langfuse = None
 
@@ -29,21 +33,26 @@ class LangfuseTracer(m06.Tracer):
 
     def __init__(self):
         super().__init__()
-        self._trace = (_langfuse.trace(name="agentpro-run") if _langfuse else None)
+        self._root = (_langfuse.start_observation(name="agentpro-run",
+                                                  as_type="agent")
+                      if _langfuse else None)
 
     def __call__(self, step: dict):
         super().__call__(step)
-        if self._trace:
-            self._trace.span(
+        if self._root:
+            self._root.start_observation(
                 name=step["tool"],
+                as_type="tool",
                 input=step.get("input"),
                 output=step.get("output"),
                 level="ERROR" if "error" in step.get("output", {}) else "DEFAULT",
-            )
+            ).end()
 
     def summary(self) -> dict:
         s = super().summary()
-        s["exported_to"] = "langfuse" if self._trace else "нікуди (немає ключів або пакета)"
+        s["exported_to"] = "langfuse" if self._root else "нікуди (немає ключів або пакета)"
+        if self._root:
+            self._root.end()
         if _langfuse:
             _langfuse.flush()
         return s

@@ -22,17 +22,21 @@ uvicorn>=0.30
 
 # A2A (a2a_server.py + a2a_client.py). Саме 1.x — у 0.x інші типи й методи:
 a2a-sdk>=1.1
-uvicorn>=0.30
-fastapi>=0.115
-httpx>=0.27
+httpx>=0.27   # fastapi й uvicorn уже вище
 
 # М7 — спостережуваність за домовленостями OTel GenAI (otel_tracing.py).
-# Одна інструментація, різні бекенди: консоль, Phoenix, будь-що з OTLP.
+# Одна інструментація, пʼять бекендів: console, phoenix, langfuse,
+# langsmith, otlp. Жоден не потребує свого SDK — лише ці два пакети.
 opentelemetry-sdk>=1.40
 opentelemetry-exporter-otlp-proto-http>=1.40
 
-# локальний UI для трейсів; тягне anthropic 1.x — тому пін нижче до <2
-arize-phoenix>=20.0
+# arize-phoenix НАВМИСНО не тут. Він тягне fastmcp-slim, який вимагає
+# mcp<2.0, а нам для М5 потрібен mcp[cli]>=2.1 — разом вони не стають.
+# Phoenix і не має жити в цьому оточенні: це окремий процес-приймач, він
+# спілкується з агентом по HTTP, а не через імпорт. Ставте його окремо:
+#   python3 -m venv ~/.venv-phoenix && ~/.venv-phoenix/bin/pip install arize-phoenix
+#   ~/.venv-phoenix/bin/phoenix serve
+# Потім, у ЦЬОМУ оточенні: python otel_tracing.py --backend phoenix
 
 # евали як юніт-тести (test_eval_gate.py)
 pytest>=8.0

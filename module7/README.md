@@ -27,9 +27,10 @@
 
 ```bash
 python run.py 7                     # eval + гейт
-python otel_tracing.py              # трейси в консоль, нічого не треба
-phoenix serve                       # в іншому терміналі
-python otel_tracing.py --backend phoenix    # трейси туди ж
+python otel_tracing.py                     # трейси в консоль, нічого не треба
+phoenix serve                              # в іншому терміналі
+python otel_tracing.py --backend phoenix   # той самий агент, інший адресат
+python otel_tracing.py --backend langfuse  # і ще один, лише за ключами
 pytest test_eval_gate.py -q         # гейт як CI-тест (~2,5 хв)
 python eval_history.py baseline     # записати прогін
 python degradation_demo.py          # зірка курсу (~2×28 LLM-викликів)
@@ -45,11 +46,71 @@ python eval_history.py --compare
 | Прапорець | Куди летять спани | Що треба |
 |---|---|---|
 | `--backend console` | у термінал | нічого |
-| `--backend phoenix` | локальний Arize Phoenix, UI на :6006 | `pip install arize-phoenix`, потім `phoenix serve` в іншому терміналі |
-| `--backend otlp` | Langfuse, LangSmith, Datadog — будь-що з OTLP | `OTEL_EXPORTER_OTLP_ENDPOINT` + ключі в `OTEL_EXPORTER_OTLP_HEADERS` |
+| `--backend phoenix` | локальний Arize Phoenix, UI на :6006 | окреме оточення, див. нижче |
+| `--backend langfuse` | Langfuse Cloud або свій self-host | `LANGFUSE_PUBLIC_KEY` + `LANGFUSE_SECRET_KEY` |
+| `--backend langsmith` | LangSmith | `LANGSMITH_API_KEY` (+ `LANGSMITH_HOST` для ЄС) |
+| `--backend otlp` | Datadog, Grafana, Jaeger, свій колектор | `OTEL_EXPORTER_OTLP_ENDPOINT` (+ `_HEADERS`) |
 
-Спани й атрибути — рівно ті, що на слайді про semconv: `invoke_agent`,
-`execute_tool`, `gen_ai.usage.input_tokens`, `gen_ai.tool.name` тощо.
+Відкрийте `_exporter()` і подивіться на гілки поруч: **різниця між
+бекендами — це ендпоінт і заголовок авторизації, більше нічого.** Langfuse
+авторизує звичайним Basic, LangSmith — заголовком `x-api-key`, Phoenix
+локально не авторизує взагалі. Жоден із них не вимагає свого SDK і не
+знає про наш код.
+
+Якщо ключів немає — кожен бекенд скаже, чого саме бракує і де це взяти,
+а не впаде трейсбеком.
+
+Ключі, які є, перевіряються ДО експорту. Це не зайва обережність:
+`BatchSpanProcessor` не показує помилок доставки, тож без перевірки
+відмова доступу виглядала б як порожній дашборд, і причину ви шукали б
+у коді агента. Найчастіша пастка — регіон LangSmith: ключ із ЄС на
+американському хості дає 403, і трейси просто зникають.
+
+### Phoenix ставиться в ОКРЕМЕ оточення
+
+Не в те, де живе агент:
+
+```
+python3 -m venv ~/.venv-phoenix
+~/.venv-phoenix/bin/pip install arize-phoenix
+~/.venv-phoenix/bin/phoenix serve          # UI на :6006
+```
+
+Причина технічна й повчальна водночас. Технічна: Phoenix тягне
+`fastmcp-slim`, який вимагає `mcp<2.0`, а нам для модуля 5 потрібен
+`mcp[cli]>=2.1` — в одному оточенні вони не стають. Повчальна: Phoenix
+і не мусить там жити. Це окремий процес-приймач, який слухає OTLP по
+HTTP. Ваш агент не імпортує Phoenix і нічого про нього не знає — він
+просто шле спани на `localhost:6006`. Рівно так само, як шле їх у
+Langfuse чи Datadog.
+
+Якщо ставити Phoenix не хочеться — не ставте. Консольного бекенда
+достатньо, щоб побачити все, що треба.
+
+Спани й атрибути — рівно ті, що в домовленостях OTel GenAI, і рівнів
+там три:
+
+```
+invoke_agent agentpro-support-agent      ← увесь виклик агента
+├── chat claude-sonnet-4-6               ← звернення до моделі, тут токени
+├── execute_tool get_order_status        ← інструмент
+├── execute_tool check_refund_eligibility
+├── chat claude-sonnet-4-6
+└── chat claude-haiku-4-5                ← guardrail теж модель, теж гроші
+```
+
+Третій рівень важливий: без спанів `chat` бекенд не знає ні про токени,
+ні про вартість, і дашборд показує нулі. З ними Langfuse сам розкладає
+прогін на GENERATION / TOOL / AGENT і рахує ціну — жодного його SDK у
+коді немає, він читає самі лише домовленості.
+
+Зверніть увагу на останній рядок: guardrail із модуля 6 — це ще одне
+звернення до моделі. Захист має ціну, і тепер вона видима.
+
+> Влітку 2026 конвенції переїхали з головного репозиторію OTel в окремий —
+> [semantic-conventions-genai](https://github.com/open-telemetry/semantic-conventions-genai),
+> файл `docs/gen-ai/gen-ai-agent-spans.md`. Старі посилання на
+> `opentelemetry.io/docs/specs/semconv/gen-ai/` ведуть на заглушку «Moved».
 
 ## Евали як тести
 

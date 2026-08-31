@@ -15,6 +15,7 @@
 """
 
 import json
+import os
 import sys
 import pathlib
 
@@ -99,15 +100,20 @@ def test_deepeval_gate(request, report):
     if not request.config.getoption("--deepeval-gate"):
         pytest.skip("вмикається прапорцем --deepeval-gate")
 
-    deepeval = pytest.importorskip("deepeval", reason="pip install deepeval")
-    from deepeval.test_case import LLMTestCase
+    pytest.importorskip("deepeval", reason="pip install deepeval")
     from deepeval.metrics import AnswerRelevancyMetric
+    from deepeval.models import AnthropicModel
+    from deepeval.test_case import LLMTestCase
+
+    # За замовчуванням DeepEval бере суддею GPT і просить OPENAI_API_KEY.
+    # Нам зайвий ключ не потрібен — суддею ставимо той самий Anthropic.
+    judge = AnthropicModel(model=os.getenv("JUDGE_MODEL", "claude-haiku-4-5-20251001"))
 
     failures = []
     for got in report["cases"][:3]:                # три кейси: DeepEval платний за викликами
         query = next(c["query"] for c in CASES if c["id"] == got["id"])
         case = LLMTestCase(input=query, actual_output=got["answer"])
-        metric = AnswerRelevancyMetric(threshold=0.7)
+        metric = AnswerRelevancyMetric(threshold=0.7, model=judge)
         metric.measure(case)
         if not metric.is_successful():
             failures.append(f"{got['id']}: {metric.score:.2f}")
