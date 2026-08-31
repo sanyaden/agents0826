@@ -26,12 +26,11 @@
 ## Запуск
 
 ```bash
-python run.py 7                     # eval + гейт
-python otel_tracing.py                     # трейси в консоль, нічого не треба
-phoenix serve                              # в іншому терміналі
-python otel_tracing.py --backend phoenix   # той самий агент, інший адресат
-python otel_tracing.py --backend langfuse  # і ще один, лише за ключами
-pytest test_eval_gate.py -q         # гейт як CI-тест (~2,5 хв)
+python run.py 7                             # eval + гейт
+python otel_tracing.py                      # трейси в консоль, нічого не треба
+python otel_tracing.py --backend phoenix    # локальний UI, див. нижче про оточення
+python otel_tracing.py --backend langfuse   # те саме в хмару, лише за ключами
+pytest test_eval_gate.py -q                 # гейт як CI-тест (~2,5 хв)
 python eval_history.py baseline     # записати прогін
 python degradation_demo.py          # зірка курсу (~2×28 LLM-викликів)
 python eval_history.py --compare
@@ -84,8 +83,14 @@ HTTP. Ваш агент не імпортує Phoenix і нічого про н�
 просто шле спани на `localhost:6006`. Рівно так само, як шле їх у
 Langfuse чи Datadog.
 
-Якщо ставити Phoenix не хочеться — не ставте. Консольного бекенда
-достатньо, щоб побачити все, що треба.
+Чого це коштує, щоб ви вирішували свідомо: ~795 МБ і 152 пакети в
+окремому оточенні, стартує за кілька секунд. Натомість це єдиний бекенд
+у практиці, якому не потрібні ні акаунт, ні ключі, ні інтернет — дані
+лишаються у вас на машині, у `~/.phoenix/phoenix.db`.
+
+Якщо ставити не хочеться — не ставте. Консольного бекенда достатньо,
+щоб побачити все, що треба; хмарні дадуть той самий трейс, якщо у вас
+є ключі.
 
 Спани й атрибути — рівно ті, що в домовленостях OTel GenAI, і рівнів
 там три:
