@@ -36,7 +36,7 @@ from core.agent import ask_json                             # noqa: E402
 from otel_tracing import SERVICE, setup                     # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
-HARVEST = HERE / "data" / "from_traces.json"
+HARVEST = HERE / "data" / "from_traces.jsonl"
 
 # Запити, яких у датасеті НЕМАЄ — саме в цьому суть: прод приносить своє
 LIVE_QUERIES = [
@@ -147,14 +147,27 @@ def collect() -> None:
         return
 
     HARVEST.parent.mkdir(exist_ok=True)
-    HARVEST.write_text(json.dumps(bad, ensure_ascii=False, indent=2),
-                       encoding="utf-8")
-    print(f"Зібрано {len(bad)} поганих трейсів → {HARVEST.name}")
-    for c in bad:
+    # JSONL, а не JSON: дописати кейс — це дописати рядок. Саме тому
+    # датасети такого роду й живуть у цьому форматі.
+    seen = set()
+    if HARVEST.exists():
+        seen = {json.loads(ln)["source_trace"]
+                for ln in HARVEST.read_text(encoding="utf-8").splitlines() if ln.strip()}
+    fresh = [c for c in bad if c["source_trace"] not in seen]
+
+    with HARVEST.open("a", encoding="utf-8") as fh:
+        for c in fresh:
+            fh.write(json.dumps(c, ensure_ascii=False) + "\n")
+
+    print(f"Поганих трейсів: {len(bad)}, з них нових: {len(fresh)} → {HARVEST.name}")
+    for c in fresh:
         print(f"  {c['id']}  {c['query'][:60]}")
-    print("\nЦе кандидати в evalset.json. Перегляньте очима, допишіть точний\n"
-          "критерій — і наступний реліз уже перевірятиметься на реальному збої,\n"
-          "а не на вигаданому.")
+    if not fresh:
+        print("  (усі вже зібрані раніше)")
+    print("\nЦе кандидати, а не готовий датасет: критерій тут загальний.\n"
+          "Перегляньте очима, звузьте критерій — і тоді одним рядком:\n"
+          f"    cat data/{HARVEST.name} >> data/evalset.jsonl\n"
+          "Ось заради цього датасети й тримають у JSONL.")
 
 
 if __name__ == "__main__":

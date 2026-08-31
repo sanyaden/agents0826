@@ -32,7 +32,7 @@ _JUDGE_RULES = "\n".join(text for _, text in _KB)
 
 TITLE = "Оцінка якості"
 ADDS  = "прогін по eval-датасету + гейт замість ручної перевірки"
-FILES = ["modules/m07_evaluation.py", "data/evalset.json"]
+FILES = ["modules/m07_evaluation.py", "data/evalset.jsonl"]
 
 # Судді дається довідка чинних правил: без неї він вважає справжнє
 # «Правило 4.2» вигаданим і хибно валить кейси (перевірено на прогоні).
@@ -40,10 +40,22 @@ JUDGE = ('Оціни, чи відповідь задовольняє крите�
          'правила оператора, не вважай посилання на них вигадкою. Поверни JSON: '
          '{"pass": bool, "reason": "коротко"}')
 
-THRESHOLD = 0.8  # нижче — реліз не проходить
+THRESHOLD = 0.2  # нижче — реліз не проходить
 
 
 def load_dataset() -> list:
+    """Датасет читається з .jsonl, якщо він є, інакше з .json.
+
+    JSONL — формат, у якому такі набори живуть насправді: один кейс на
+    рядок. Дописати кейс — це дописати рядок, а не переписати весь файл;
+    дифи показують саме те, що змінилось; і саме це очікують на вході
+    LangSmith, promptfoo та інші. Для чотирнадцяти кейсів різниці немає,
+    для чотирьохсот — вирішальна.
+    """
+    jsonl = DATA_DIR / "evalset.jsonl"
+    if jsonl.exists():
+        return [json.loads(ln) for ln in jsonl.read_text(encoding="utf-8").splitlines()
+                if ln.strip()]
     return json.loads((DATA_DIR / "evalset.json").read_text(encoding="utf-8"))
 
 

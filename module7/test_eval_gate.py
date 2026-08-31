@@ -26,7 +26,22 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from config import DATA_DIR
 from modules import m07_evaluation as m07
 
-CASES = json.loads((DATA_DIR / "evalset.json").read_text(encoding="utf-8"))
+CASES = m07.load_dataset()          # одне джерело правди з модулем
+
+
+def test_dataset_files_agree():
+    """Якщо поруч лежать .jsonl і .json — вони мають збігатись.
+
+    Дешевий запобіжник: інакше хтось відредагує .json, гейт мовчки
+    читатиме .jsonl, і два тижні буде незрозуміло, чому правка «не
+    подіяла».
+    """
+    legacy = DATA_DIR / "evalset.json"
+    if not legacy.exists():
+        pytest.skip("є лише .jsonl")
+    old = {c["id"] for c in json.loads(legacy.read_text(encoding="utf-8"))}
+    new = {c["id"] for c in CASES}
+    assert old == new, f"розійшлись: тільки в .json {old - new}, тільки в .jsonl {new - old}"
 
 
 @pytest.fixture(scope="session")
