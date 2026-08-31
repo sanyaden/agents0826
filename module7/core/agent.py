@@ -9,7 +9,18 @@
 import inspect
 import json
 import time
-from anthropic import Anthropic, APIError, APIStatusError
+try:
+    from anthropic import Anthropic, APIError, APIStatusError
+except ModuleNotFoundError:                                   # найчастіша причина
+    import sys                                                # — не те оточення
+    raise SystemExit(
+        "Пакета anthropic немає в тому Python, яким ви це запустили.\n"
+        f"  зараз працює: {sys.executable}\n"
+        "Майже завжди це означає, що не активоване оточення практики\n"
+        "(system python, anaconda чи venv для Phoenix). Полагодити:\n"
+        "  source ../.venv/bin/activate      # Windows: ..\\.venv\\Scripts\\activate\n"
+        "  pip install -r requirements.txt   # якщо оточення нове\n"
+        "Звірити: which python — має бути шлях усередині .venv")
 from config import API_KEY, MODEL, MODEL_FAST, MAX_TOKENS, MAX_TURNS
 
 client = Anthropic(api_key=API_KEY)
