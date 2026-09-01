@@ -39,9 +39,13 @@ def test_dataset_files_agree():
     legacy = DATA_DIR / "evalset.json"
     if not legacy.exists():
         pytest.skip("є лише .jsonl")
-    old = {c["id"] for c in json.loads(legacy.read_text(encoding="utf-8"))}
-    new = {c["id"] for c in CASES}
-    assert old == new, f"розійшлись: тільки в .json {old - new}, тільки в .jsonl {new - old}"
+    old = {c["id"]: c["query"] for c in json.loads(legacy.read_text(encoding="utf-8"))}
+    new = {c["id"]: c["query"] for c in CASES}
+    assert old.keys() == new.keys(), (
+        f"розійшлись кейси: тільки в .json {old.keys() - new.keys()}, "
+        f"тільки в .jsonl {new.keys() - old.keys()}")
+    drifted = [k for k in old if old[k] != new[k]]
+    assert not drifted, f"той самий кейс, різний текст запиту: {drifted}"
 
 
 @pytest.fixture(scope="session")
