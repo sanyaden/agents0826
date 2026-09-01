@@ -32,7 +32,17 @@ def summarize(result: dict) -> list:
     """Короткі метрики модуля для консолі й слайдів."""
     bits = []
     tools = [t["tool"] for t in result.get("trace", [])]
-    bits.append("інструменти: " + (" → ".join(tools) if tools else "не викликались"))
+    if result.get("cases"):
+        # прогін eval-датасету: покейсова розкладка замість траси інструментів
+        for c in result["cases"]:
+            t = "✓" if c.get("tool_ok") else "✗"
+            j = "✓" if c.get("judge_pass") else "✗"
+            line = f"[{'PASS' if c.get('pass') else 'FAIL'}] {c['id']:<22} інструмент {t}  суддя {j}"
+            if not c.get("pass"):
+                line += f"  ← {c.get('reason', '')[:60]}"
+            bits.append(line)
+    else:
+        bits.append("інструменти: " + (" → ".join(tools) if tools else "не викликались"))
 
     if v := result.get("outcome"):
         bits.append(f"результат: {v}")
