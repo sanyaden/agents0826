@@ -49,9 +49,23 @@ def test_dataset_files_agree():
 
 
 @pytest.fixture(scope="session")
-def report():
-    """Один прогін датасету на всю сесію — не платимо за кожен тест окремо."""
-    return m07.run()
+def report(request):
+    """Один прогін датасету на всю сесію — не платимо за кожен тест окремо.
+
+    Прогін триває ~2,5 хв, і без цього прогресу pytest увесь цей час
+    мовчить, а потім висипає всі крапки разом — виглядає як зависання.
+    pytest захоплює stdout, тож на час рядка прогресу захоплення треба
+    вимкнути через capmanager.
+    """
+    capman = request.config.pluginmanager.getplugin("capturemanager")
+
+    def show(i, total, case_id):
+        with capman.global_and_fixture_disabled():
+            end = "\n" if i == total else ""
+            print(f"\r  eval-датасет: кейс {i:>2}/{total}  {case_id:<24}",
+                  end=end, flush=True)
+
+    return m07.run(on_case=show)
 
 
 # ── Дешева половина: інструменти, без моделі ──────────────────

@@ -90,10 +90,12 @@ def evaluate_case(case: dict) -> dict:
     }
 
 
-def run(query: str | None = None) -> dict:
+def run(query: str | None = None, on_case=None) -> dict:
     dataset = load_dataset()
     cases = []
-    for case in dataset:
+    for i, case in enumerate(dataset, 1):
+        if on_case:
+            on_case(i, len(dataset), case["id"])
         cases.append(evaluate_case(case))
         time.sleep(0.3)
 
