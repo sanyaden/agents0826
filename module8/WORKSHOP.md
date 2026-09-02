@@ -1,8 +1,9 @@
 # Воркшоп М8 — деплой агента у хмару
 
-Два шляхи на вибір і запасний без акаунта. Команди шляху A перевірені
-запуском 01.09 (CLI v0.28.1), шлях B — за офіційним quickstart нової
-платформи.
+Два шляхи на вибір і запасний без акаунта. Шлях A перевірено НАСКРІЗЬ
+на живому AWS 02.09.2026 (CLI v0.28.1, eu-central-1): деплой пройшов,
+хмарний агент відповів. Шлях B — за офіційним quickstart нової
+платформи, без живого прогону.
 
 ## Що потрібно ДО заняття
 
@@ -10,8 +11,8 @@
 
 | | Шлях A (AWS) | Шлях B (GCP) | Шлях C (без акаунта) |
 |---|---|---|---|
-| Акаунт | AWS-акаунт з правами адміністратора | GCP-проєкт з увімкненим billing | не треба |
-| CLI | `aws` CLI + `aws login` | `gcloud` CLI + `gcloud auth login` | Docker |
+| Акаунт | AWS-акаунт + IAM-user з AdministratorAccess | GCP-проєкт з увімкненим billing | не треба |
+| CLI | `aws configure` з access-ключами | `gcloud auth login` | Docker |
 | Локально | Node 20+, uv | Python 3.10+ | — |
 | Гроші | центи за виклики; CDK-стек безкоштовний | центи + $0.25/1000 подій памʼяті | 0 |
 
@@ -39,8 +40,8 @@ cd <імʼя-проєкту>
 agentcore dev              # dev-сервер (порт зайнятий? -p 8090)
 agentcore dev "Де посилка 0500123456789?"
 
-# 4) у хмару (потрібен aws login; перший раз ~5-10 хв на CDK bootstrap)
-agentcore deploy
+# 4) у хмару (потрібні креденшели; -y читає їх з профілю без питань)
+agentcore deploy -y
 
 # 5) перевірка
 agentcore invoke "Де посилка 0500123456789?"
@@ -50,6 +51,16 @@ agentcore status           # що розгорнуто
 
 Створений проєкт — звичайний код: агент у `app/<name>/`, інфраструктура
 в `agentcore/` (CDK). Промпт і інструменти правляться прямо там.
+
+**Реальні таймінги** (акаунт `ai_ws_lab`, eu-central-1, 02.09.2026):
+`agentcore create` — секунди · `agentcore deploy` — **187 с** (перший
+раз, з CDK bootstrap і збіркою) · `agentcore invoke` — **12 с**.
+Тобто на живий деплой у воркшопі закладайте ~4 хвилини, і це якщо
+акаунт уже налаштований. Розгортається CloudFormation-стек
+`AgentCore-<проєкт>-default`, у ньому runtime + IAM-роль агента.
+
+Після деплою CLI попереджає: індексація трейсів вмикається ще ~10 хв —
+не лякайтесь, що трейс не одразу видно в CloudWatch.
 
 **Підводні камені, перевірені на собі:**
 - порт 8080 часто зайнятий Docker'ом — dev сам піде на 8081, але
@@ -127,7 +138,26 @@ curl -s localhost:8000/ask -X POST -H 'Content-Type: application/json' \
 2. **Ліміти**: max-instances (Cloud Run) або ліміт конкурентності
    (AgentCore) — щоб сплеск трафіку не став сплеском рахунку.
 3. **Бюджет-алерт**: AWS Budgets / GCP Billing budget на $5 із
-   нотифікацією. Це найдешевший guardrail усього курсу.
+   нотифікацією. Це найдешевший guardrail усього курсу. Одним рядком,
+   якщо не хочеться клікати в консолі:
+
+```bash
+aws budgets create-budget --account-id <ID> \
+  --budget '{"BudgetName":"agentpro-guard","BudgetLimit":{"Amount":"5","Unit":"USD"},
+             "TimeUnit":"MONTHLY","BudgetType":"COST"}' \
+  --notifications-with-subscribers '[{"Notification":{"NotificationType":"ACTUAL",
+     "ComparisonOperator":"GREATER_THAN","Threshold":80,"ThresholdType":"PERCENTAGE"},
+     "Subscribers":[{"SubscriptionType":"EMAIL","Address":"you@example.com"}]}]'
+```
+
+## Прибрати за собою
+
+Стек живий коштує копійки, але хай не висить:
+
+```bash
+aws cloudformation delete-stack --stack-name AgentCore-<проєкт>-default \
+    --region eu-central-1
+```
 
 ## Коли зробите
 
