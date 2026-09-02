@@ -1,8 +1,26 @@
 # Модуль 8 — Продакшн, деплой та AIOps
 
+## Як почати
 
-> **Воркшоп заняття** — покроково в [WORKSHOP.md](WORKSHOP.md): три треки — AWS AgentCore (Strands),
-> GCP Agent Runtime (ADK) і Kubernetes на ноутбуці (k3d). Код треків — у `deploy/`.
+```bash
+git clone https://github.com/sanyaden/agents0826.git      # або git pull, якщо вже є
+cd agents0826/module8
+
+python3 -m venv .venv && source .venv/bin/activate         # Windows: .venv\Scripts\activate
+pip install -r requirements.txt -r deploy/requirements.txt # агент + Strands, ADK, LiteLLM
+cp .env.example .env                                       # вписати ANTHROPIC_API_KEY
+
+python deploy/aws/agent.py                                 # ~10 с: агент відповів, взяв 2 інструменти
+```
+
+Якщо останній рядок вивів `інструменти: ['get_order_status', 'check_refund_eligibility']` —
+усе стоїть. Далі — **[WORKSHOP.md](WORKSHOP.md)**: три треки деплою на вибір,
+AWS AgentCore (Strands), GCP Agent Runtime (ADK) і Kubernetes на ноутбуці (k3d),
+з реальними таймінгами. Код треків — у `deploy/`.
+
+Що потрібно понад Python: для AWS — акаунт, Node 20+, `npm i -g @aws/agentcore`;
+для GCP — проєкт із billing і `gcloud`; для Kubernetes — Docker і `brew install k3d`.
+Хмарні акаунти не обов'язкові: трек C працює без них.
 Продовження модуля 7. **Додається:** керований runtime, стрімінг,
 HTTP-обгортка, контейнер і SLO. Головна думка — прямо в коді модуля:
 логіка агента не змінюється, змінюється спосіб запуску.
@@ -31,12 +49,17 @@ curl -s localhost:8000/ask -X POST -H 'content-type: application/json' \
 python slo.py                  # офлайн, після run.py + eval_history
 ```
 
-**Опційно — контейнер** (для шляху B воркшопу: Cloud Run / GKE; шлях A
-через AgentCore і managed runtime обходяться без Docker):
+**Контейнер** (основа треку C і шляху Cloud Run; AgentCore і Agent Runtime
+збирають його за вас):
 
 ```bash
-docker build -t agentpro-m8 . && docker run -p 8000:8000 -e ANTHROPIC_API_KEY=... agentpro-m8
+docker build --provenance=false --sbom=false -t agentpro-m8 .
+docker run -p 8000:8000 -e ANTHROPIC_API_KEY=... agentpro-m8
 ```
+
+Прапорці `--provenance=false --sbom=false` потрібні, якщо образ піде в
+локальний Kubernetes: Docker Desktop додає атестації, які kubelet не
+розпаковує.
 
 Зверніть увагу: ключа в образі немає — тільки через `-e` у runtime
 (у проді — Secret Manager). І чекпоінт у контейнері вмирає з рестартом —
