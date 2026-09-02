@@ -1,0 +1,19 @@
+# Так масштабують агентів у проді: за чергою, а не за CPU. Черга —
+# backpressure замість падінь, а порожня черга → нуль подів → нуль грошей.
+# Потрібен KEDA у кластері:
+#   helm repo add kedacore https://kedacore.github.io/charts
+#   helm install keda kedacore/keda --create-namespace --namespace keda
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agentpro-by-queue
+spec:
+  scaleTargetRef: {name: agentpro}
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  triggers:
+    - type: aws-sqs-queue            # або gcp-pubsub, rabbitmq, redis-lists…
+      metadata:
+        queueURL: https://sqs.eu-central-1.amazonaws.com/<ACCOUNT>/agent-tasks
+        queueLength: "5"             # один под на кожні 5 повідомлень у черзі
+        awsRegion: eu-central-1

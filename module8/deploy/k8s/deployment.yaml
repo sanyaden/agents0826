@@ -1,0 +1,39 @@
+# Той самий контейнер, що й у Cloud Run чи AgentCore — просто описаний
+# для Kubernetes. Три речі, які варто побачити: ключ приходить із Secret,
+# а не з образу; є readiness-проба; є ліміти ресурсів.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentpro
+  labels: {app: agentpro}
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: agentpro}
+  template:
+    metadata:
+      labels: {app: agentpro}
+    spec:
+      containers:
+        - name: agent
+          image: agentpro-m8:local
+          imagePullPolicy: IfNotPresent        # образ завантажений у kind напряму
+          ports: [{containerPort: 8000}]
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef: {name: agent-secrets, key: ANTHROPIC_API_KEY}
+          readinessProbe:
+            httpGet: {path: /health, port: 8000}
+            initialDelaySeconds: 3
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentpro
+spec:
+  selector: {app: agentpro}
+  ports: [{port: 80, targetPort: 8000}]

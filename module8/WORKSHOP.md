@@ -1,145 +1,183 @@
-# Воркшоп М8 — деплой агента у хмару
+# Воркшоп М8 — той самий агент у хмару трьома шляхами
 
-Два шляхи на вибір і запасний без акаунта. Шлях A перевірено НАСКРІЗЬ
-на живому AWS 02.09.2026 (CLI v0.28.1, eu-central-1): деплой пройшов,
-хмарний агент відповів. Шлях B — за офіційним quickstart нової
-платформи, без живого прогону.
+Три треки на вибір, усі приводять до одного: агент підтримки, який ми
+збирали вісім занять, працює не на ноутбуці. Що перевірено запуском
+(02.09.2026), написано в кожному треку окремо; де не перевірено — теж.
 
-## Що потрібно ДО заняття
-
-**Нічого з цього не робиться за 30 хв воркшопу — тільки заздалегідь.**
-
-| | Шлях A (AWS) | Шлях B (GCP) | Шлях C (без акаунта) |
+| Трек | Куди | Що потрібно | Перевірено |
 |---|---|---|---|
-| Акаунт | AWS-акаунт + IAM-user з AdministratorAccess | GCP-проєкт з увімкненим billing | не треба |
-| CLI | `aws configure` з access-ключами | `gcloud auth login` | Docker |
-| Локально | Node 20+, uv | Python 3.10+ | — |
-| Гроші | центи за виклики; CDK-стек безкоштовний | центи + $0.25/1000 подій памʼяті | 0 |
+| A | AWS Bedrock AgentCore | AWS-акаунт, Node 20+, uv | наскрізь, на живому AWS |
+| B | GCP Agent Runtime / Cloud Run | GCP-проєкт із billing, gcloud | локально так; хмара — за quickstart |
+| C | Kubernetes на ноутбуці | Docker, kubectl, k3d | наскрізь, на k3d |
 
-Ключ моделі: підійде той самий `ANTHROPIC_API_KEY`, що й у всій практиці
-(шлях A підтримує Anthropic напряму; Bedrock не обовʼязковий).
-
-⚠️ Якщо колись ставили старий Python-CLI — приберіть, інакше конфлікт
-імен команди: `pip uninstall bedrock-agentcore-starter-toolkit`.
-
----
-
-## Шлях A · AWS Bedrock AgentCore
+**Нічого з колонки «Що потрібно» не робиться за 30 хвилин воркшопу —
+тільки заздалегідь.** Ключ моделі всюди той самий `ANTHROPIC_API_KEY`.
 
 ```bash
-# 1) CLI (пакет називається БЕЗ -cli на кінці)
-npm install -g @aws/agentcore
-
-# 2) проєкт — майстер спитає фреймворк, модель, памʼять.
-#    Наш вибір: Strands · Anthropic · памʼять none · протокол HTTP
-agentcore create
-
-cd <імʼя-проєкту>
-
-# 3) локально, ще без хмари
-agentcore dev              # dev-сервер (порт зайнятий? -p 8090)
-agentcore dev "Де посилка 0500123456789?"
-
-# 4) у хмару (потрібні креденшели; -y читає їх з профілю без питань)
-agentcore deploy -y
-
-# 5) перевірка
-agentcore invoke "Де посилка 0500123456789?"
-agentcore logs             # логи runtime
-agentcore status           # що розгорнуто
+cd module8
+pip install -r deploy/requirements.txt        # Strands, ADK, LiteLLM
 ```
-
-Створений проєкт — звичайний код: агент у `app/<name>/`, інфраструктура
-в `agentcore/` (CDK). Промпт і інструменти правляться прямо там.
-
-**Реальні таймінги** (акаунт `ai_ws_lab`, eu-central-1, 02.09.2026):
-`agentcore create` — секунди · `agentcore deploy` — **187 с** (перший
-раз, з CDK bootstrap і збіркою) · `agentcore invoke` — **12 с**.
-Тобто на живий деплой у воркшопі закладайте ~4 хвилини, і це якщо
-акаунт уже налаштований. Розгортається CloudFormation-стек
-`AgentCore-<проєкт>-default`, у ньому runtime + IAM-роль агента.
-
-Після деплою CLI попереджає: індексація трейсів вмикається ще ~10 хв —
-не лякайтесь, що трейс не одразу видно в CloudWatch.
-
-**Підводні камені, перевірені на собі:**
-- порт 8080 часто зайнятий Docker'ом — dev сам піде на 8081, але
-  інвок теж треба слати з `-p`;
-- `agentcore deploy` без налаштованої цілі скаже «Target "default"
-  not found» — це нормально, перший інтерактивний `agentcore deploy`
-  проведе через вибір акаунта й регіону;
-- `--dry-run` показує, що буде створено, без деплою — добре для показу
-  на екрані.
 
 ---
 
-## Шлях B · GCP Agent Runtime (Gemini Enterprise Agent Platform)
+## Трек A · AWS: Strands → AgentCore
 
-До Next '26 це називалось Vertex AI Agent Engine — у старих статтях
+**Крок 1 — агент локально.** `deploy/aws/agent.py` — той самий агент
+підтримки на Strands Agents (SDK від AWS) з моделлю Anthropic:
+
+```bash
+cd deploy/aws
+python agent.py "Посилка EE123456789UA не прийшла два тижні. Поверніть гроші за доставку."
+```
+
+Побачите відповідь і `інструменти: ['get_order_status', 'check_refund_eligibility']`.
+Це звичайний Python — жодної інфраструктури.
+
+**Крок 2 — CLI і проєкт.** Пакет називається БЕЗ `-cli` на кінці, такого
+пакета в npm просто немає:
+
+```bash
+npm install -g @aws/agentcore
+agentcore create          # майстер: Strands · Anthropic · памʼять none · протокол HTTP
+cd <імʼя-проєкту>
+```
+
+Скаффолд кладе агента в `app/<name>/main.py`. Перенесіть туди інструменти
+й системний промпт із `deploy/aws/agent.py` — це дві функції з `@tool` і
+один рядок `SYSTEM`.
+
+**Крок 3 — локально, ще без хмари.**
+
+```bash
+agentcore dev -p 8090                                 # dev-сервер
+agentcore dev -p 8090 "Де посилка EE123456789UA?"     # виклик
+```
+
+Порт 8080 часто зайнятий Docker'ом — тому явний `-p` в обох командах.
+
+**Крок 4 — у хмару.** Потрібні креденшели (`aws configure` з
+access-ключами IAM-користувача з `AdministratorAccess` — CDK створює ролі).
+
+```bash
+agentcore deploy -y       # -y бере креденшели з профілю без питань
+agentcore invoke "Де посилка EE123456789UA?"
+agentcore status · agentcore logs
+```
+
+**Реальні таймінги** (eu-central-1): `deploy` — **187 с** перший раз
+(CDK bootstrap і збірка), `invoke` — **12 с**. Тобто деплой робіть ДО
+заняття, на сцені показуйте invoke. Розгортається стек
+`AgentCore-<проєкт>-default`: runtime + окрема IAM-роль агента.
+Індексація трейсів у CloudWatch вмикається ще ~10 хв після деплою.
+
+Прибрати за собою: `aws cloudformation delete-stack --stack-name AgentCore-<проєкт>-default`.
+
+---
+
+## Трек B · GCP: ADK → Agent Runtime
+
+До квітня 2026 це називалось Vertex AI Agent Engine — у старих статтях
 шукайте стару назву, старі URL редіректять.
+
+**Крок 1 — агент локально.** `deploy/gcp/support_agent/` — той самий агент
+на Google ADK; модель Anthropic через LiteLLM, тож другий ключ не потрібен:
+
+```bash
+cd deploy/gcp
+adk run support_agent                 # REPL у терміналі
+adk web                               # веб-UI на :8000 з трасою кожного кроку
+python try_local.py                   # те саме з коду, без REPL
+```
+
+Перевірено: агент бере обидва інструменти.
+
+**Крок 2 — у хмару (за офіційним quickstart, без живого прогону).**
+Потрібні: проєкт із billing, `gcloud auth application-default login`,
+увімкнений `aiplatform.googleapis.com`, ролі `aiplatform.user` +
+`storage.admin`, staging-bucket.
 
 ```bash
 pip install --upgrade "google-cloud-aiplatform[agent_engines,adk]>=1.112"
-gcloud auth application-default login
 gsutil mb -l europe-west1 gs://<ваш-staging-bucket>
 ```
 
 ```python
 import vertexai
 from vertexai import agent_engines
+from support_agent.agent import root_agent
 
 client = vertexai.Client(project="my-proj", location="europe-west1")
-
-app = agent_engines.AdkApp(agent=root_agent)   # ваш ADK-агент з модуля 3
-
+app = agent_engines.AdkApp(agent=root_agent)
 remote = client.agent_engines.create(
     agent=app,
-    config={"requirements": ["google-cloud-aiplatform[agent_engines,adk]"],
+    config={"requirements": ["google-cloud-aiplatform[agent_engines,adk]", "litellm"],
             "staging_bucket": "gs://<ваш-staging-bucket>"},
 )
-print(remote.resource_name)                    # готовий endpoint
+print(remote.resource_name)
 ```
 
-Сесії та Memory Bank підключаються самі. IAM: `roles/aiplatform.user`
-і `roles/storage.admin`; API `aiplatform.googleapis.com` увімкнене.
+Сесії та Memory Bank підключаються самі. Ключ Anthropic для LiteLLM —
+через змінну оточення runtime, не в коді.
 
-Альтернатива на Cloud Run зі спільною памʼяттю:
+**Альтернатива — Cloud Run** (serverless, з тією самою памʼяттю):
 
 ```bash
 adk deploy cloud_run --project=$PROJECT --region=europe-west1 \
-    --memory_service_uri=agentengine://<ENGINE_ID> ./my_agent
+    --memory_service_uri=agentengine://<ENGINE_ID> ./support_agent
 ```
 
 ---
 
-## Шлях C · без акаунта: той самий контейнер локально
+## Трек C · Kubernetes на ноутбуці — без жодного акаунта
 
-«Деплой» — це контейнер плюс секрети зовні. Обидві хмари беруть на
-вхід рівно те, що ви зараз зберете руками:
+«Деплой» — це контейнер плюс секрети зовні; Kubernetes лише запускає
+його і тримає живим. Усе, що ви тут зробите, один в один переноситься
+на EKS чи GKE.
 
 ```bash
-cd module8
-docker build -t agentpro-m8 .
-docker run -p 8000:8000 -e ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY agentpro-m8
-curl -s localhost:8000/ask -X POST -H 'Content-Type: application/json' \
-     -d '{"query": "Де посилка 0500123456789?"}'
+brew install k3d                       # k3s у Docker
+export ANTHROPIC_API_KEY=sk-ant-...
+./deploy/k8s/up.sh                     # образ → кластер → секрет → деплой
 ```
 
-Зверніть увагу: ключа немає ні в образі, ні в коді — лише в env.
-Це та сама модель секретів, що в Secrets Manager, просто без хмари.
+Скрипт робить п'ять кроків і кожен називає. **Реальні таймінги:** кластер
+з нуля — 44 с, `up.sh` при живому кластері — 22 с до Running.
+
+```bash
+kubectl port-forward svc/agentpro 8080:80          # в іншому терміналі
+curl -s localhost:8080/ask -X POST -H 'content-type: application/json' \
+     -d '{"query":"Де посилка EE123456789UA?"}'
+kubectl get pods,hpa                                # HPA бачить CPU
+```
+
+Виклик — 12 с, у відповіді `tools` і `cost_usd`.
+
+**Що подивитись у `deploy/k8s/`:** `deployment.yaml` — ключ із Secret,
+readiness-проба, ліміти; `hpa.yaml` — автоскейл за CPU, і чому це поганий
+сигнал для агентів; `keda-scaledobject.yaml` — як масштабують у проді,
+за чергою.
+
+**Три пастки, знайдені на прогоні** (усі вже враховані в скрипті):
+- kind і minikube на Docker Desktop з ядром 7.x падають на cgroup v2 у
+  kubelet — тому k3d;
+- Docker Desktop додає в образ атестації, які kubelet не розпаковує —
+  «pull access denied» на локальному образі; тому `--provenance=false`;
+- Dockerfile не копіював `filters.py`, і контейнер падав на імпорті —
+  образ, який ніколи не запускали, ніколи не працював.
+
+Прибрати за собою: `k3d cluster delete agentpro`.
 
 ---
 
-## Лабораторна (після будь-якого шляху)
+## Лабораторна (після будь-якого треку)
 
-1. **Секрети**: перекладіть ключ з env у Secrets Manager (AWS) чи
-   Secret Manager (GCP) і дайте агенту роль на читання самого лише
-   цього секрету.
-2. **Ліміти**: max-instances (Cloud Run) або ліміт конкурентності
-   (AgentCore) — щоб сплеск трафіку не став сплеском рахунку.
-3. **Бюджет-алерт**: AWS Budgets / GCP Billing budget на $5 із
-   нотифікацією. Це найдешевший guardrail усього курсу. Одним рядком,
-   якщо не хочеться клікати в консолі:
+1. **Секрети**: ключ із env → Secrets Manager (AWS) / Secret Manager
+   (GCP) / External Secrets (K8s); агенту — роль лише на читання цього
+   секрету.
+2. **Ліміти**: max-instances (Cloud Run), ліміт конкурентності
+   (AgentCore), `maxReplicas` (HPA/KEDA) — щоб сплеск трафіку не став
+   сплеском рахунку.
+3. **Бюджет-алерт** на $5 — одна команда, найдешевший guardrail курсу:
 
 ```bash
 aws budgets create-budget --account-id <ID> \
@@ -150,21 +188,12 @@ aws budgets create-budget --account-id <ID> \
      "Subscribers":[{"SubscriptionType":"EMAIL","Address":"you@example.com"}]}]'
 ```
 
-## Прибрати за собою
-
-Стек живий коштує копійки, але хай не висить:
-
-```bash
-aws cloudformation delete-stack --stack-name AgentCore-<проєкт>-default \
-    --region eu-central-1
-```
-
 ## Коли зробите
 
 У картку Trello М8:
 
 ```
-Шлях: A / B / C
-Endpoint або скрін виклику: ...
-Що в лабораторній вийшло: секрети / ліміти / бюджет
+Трек: A / B / C
+Endpoint або вивід curl: ...
+Лабораторна: секрети / ліміти / бюджет — що вийшло
 ```

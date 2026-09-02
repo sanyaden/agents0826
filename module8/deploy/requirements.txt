@@ -1,0 +1,17 @@
+# Залежності треків деплою (module8/deploy). Ставляться в те саме оточення,
+# що й уся практика — конфліктів із нашим стеком немає (перевірено 02.09.2026).
+#
+#   pip install -r deploy/requirements.txt
+
+# Трек A · AWS: Strands Agents з провайдером Anthropic
+strands-agents[anthropic]>=1.54
+strands-agents-tools>=0.2
+
+# Трек B · GCP: Google ADK + LiteLLM (щоб узяти Anthropic, а не лише Gemini)
+google-adk>=2.8
+litellm>=1.98
+
+# Трек A · CLI ставиться окремо, він не з PyPI:
+#   npm install -g @aws/agentcore      (Node 20+, uv для Python-агентів)
+# Трек C · кластер локально:
+#   brew install k3d                   (Docker Desktop має бути запущений)
