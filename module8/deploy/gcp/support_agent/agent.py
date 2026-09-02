@@ -11,6 +11,14 @@ Anthropic через LiteLLM: ADK не прив'язаний до Gemini, а н�
 """
 
 import os
+import pathlib
+
+# ключ — із module8/.env, щоб не експортувати руками
+try:
+    from dotenv import load_dotenv
+    load_dotenv(pathlib.Path(__file__).resolve().parents[3] / ".env")
+except ImportError:
+    pass
 
 from google.adk.agents import Agent
 from google.adk.models.lite_llm import LiteLlm

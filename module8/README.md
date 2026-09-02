@@ -6,9 +6,15 @@
 git clone https://github.com/sanyaden/agents0826.git      # або git pull, якщо вже є
 cd agents0826/module8
 
-python3 -m venv .venv && source .venv/bin/activate         # Windows: .venv\Scripts\activate
-pip install -r requirements.txt -r deploy/requirements.txt # агент + Strands, ADK, LiteLLM
 cp .env.example .env                                       # вписати ANTHROPIC_API_KEY
+
+# оточення 1 — агент курсу, як у всіх модулях
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+
+# оточення 2 — треки деплою (Strands, ADK, LiteLLM). ОКРЕМЕ: strands
+# вимагає mcp<2.0, а модуль 5 — mcp 2.x; разом вони не стають
+python3 -m venv deploy/.venv && source deploy/.venv/bin/activate
+pip install -r deploy/requirements.txt                     # ~100 с
 
 python deploy/aws/agent.py                                 # ~10 с: агент відповів, взяв 2 інструменти
 ```

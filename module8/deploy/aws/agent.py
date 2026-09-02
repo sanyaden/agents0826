@@ -11,7 +11,15 @@ Python: запускається локально, деплоїться будь
 """
 
 import os
+import pathlib
 import sys
+
+# ключ — із module8/.env, щоб не експортувати руками
+try:
+    from dotenv import load_dotenv
+    load_dotenv(pathlib.Path(__file__).resolve().parents[2] / ".env")
+except ImportError:
+    pass
 
 from strands import Agent, tool
 from strands.models.anthropic import AnthropicModel

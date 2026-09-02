@@ -1,7 +1,13 @@
-# Залежності треків деплою (module8/deploy). Ставляться в те саме оточення,
-# що й уся практика — конфліктів із нашим стеком немає (перевірено 02.09.2026).
+# Залежності треків деплою — в ОКРЕМОМУ оточенні, не в тому, де агент курсу.
+# Причина: strands-agents вимагає mcp<2.0, а модуль 5 — mcp[cli]>=2.1; разом
+# вони не стають (перевірено в чистому клоні 02.09.2026). Це нормально:
+# фреймворк хмари — окремий проєкт, як і в реальному репозиторії.
 #
+#   cd module8
+#   python3 -m venv deploy/.venv && source deploy/.venv/bin/activate
 #   pip install -r deploy/requirements.txt
+
+python-dotenv>=1.0            # ключ береться з module8/.env
 
 # Трек A · AWS: Strands Agents з провайдером Anthropic
 strands-agents[anthropic]>=1.54

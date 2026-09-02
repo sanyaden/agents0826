@@ -15,8 +15,13 @@
 
 ```bash
 cd module8
-pip install -r deploy/requirements.txt        # Strands, ADK, LiteLLM
+python3 -m venv deploy/.venv && source deploy/.venv/bin/activate
+pip install -r deploy/requirements.txt        # Strands, ADK, LiteLLM, ~100 с
 ```
+
+Оточення для треків **окреме** від оточення агента курсу: `strands-agents`
+вимагає `mcp<2.0`, а модуль 5 — `mcp 2.x`, разом вони не стають. Ключ
+береться з `module8/.env` автоматично.
 
 ---
 
