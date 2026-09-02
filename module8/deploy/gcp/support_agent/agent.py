@@ -20,8 +20,19 @@ try:
 except ImportError:
     pass
 
-from google.adk.agents import Agent
-from google.adk.models.lite_llm import LiteLlm
+try:
+    from google.adk.agents import Agent
+    from google.adk.models.lite_llm import LiteLlm
+except ModuleNotFoundError as e:
+    import sys
+    raise SystemExit(
+        f"Пакета {e.name} немає в тому Python, яким ви це запустили.\n"
+        f"  зараз працює: {sys.executable}\n"
+        "Треки деплою живуть в ОКРЕМОМУ оточенні module8/deploy/.venv\n"
+        "(strands вимагає mcp<2.0, а модуль 5 — mcp 2.x; разом не стають). Полагодити:\n"
+        "  cd module8 && source deploy/.venv/bin/activate\n"
+        "  pip install -r deploy/requirements.txt   # якщо оточення ще немає\n"
+        "Звірити: which python — має бути шлях усередині deploy/.venv")
 
 ORDERS = {
     "EE123456789UA": {"status": "В дорозі", "last_scan": "Сортувальний центр Київ",
